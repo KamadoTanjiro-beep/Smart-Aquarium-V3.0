@@ -24,7 +24,7 @@ Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, an
 
 Please add http://arduino.esp8266.com/stable/package_esp8266com_index.json in File --> Preferences --> Additional Boards Manager URLs to get support for all ESP Boards.
 
-Pin Configuration:
+## Pin Configuration:
 
 DS3231 and 128x64 OLED using I2C and are connected to
 
@@ -61,6 +61,6 @@ NodeMCU-ESP8266 Development Board ESP12E <br/><br/>
 
 Other parts as required
 
-WEB SERVER
+## WEB SERVER
 
 <img src="https://github.com/chikne97/Smart-Aquarium-V3.0/blob/main/demo2.png" alt="OLED" width="400" height="800"> <br/>
