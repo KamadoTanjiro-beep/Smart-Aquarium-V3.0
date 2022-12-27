@@ -1,18 +1,25 @@
-# Aquarium Automation using NodeMCU 12E V3.0
+# Aquarium Automation using NodeMCU ESP-12E V3.0
+
+### What's New?
+* Completely New WebServer UI
+* Uses new Asynchronous Webserver
+* Real time page update using JS XMLHTTPREQUESTS
+* Uses ESP-NOW to broadcast time to other ESPs without dedicated RTC modules
+* Better organised code
 
 FOR ANY KIND OF QUESTIONS OR QUERIES PLEASE CONTACT ME HERE: https://thingsbypatra.pythonanywhere.com/contact
 
-Also, this code needs some optimisations (I believe that) so, if you have updated something and it works better then please let me know.
+Also, this code needs some optimisations (I believe that) so, if you have updated something and it works better than mine, then please let me know.
 
 Using NodeMCU for aquarium lights, filter, skimmer, power head/wavemaker control with OTA updates, timers, auto time update, visual feedbacks and WiFi signal level icons.
 
 Disclaimer: I take absolutely no responsibility for the use of this code. Use it with your own risk.
 
-##It works as "switches" which turns something on or off automatically (by time). This can be applied to varied of things and can be expanded as automatic dosers, automatic water changes, etc (limited by your imagination).
+##It works as "smart switches" which turns something on or off automatically (by time or manually). This can be applied to varied of things and can be expanded as automatic dosers, automatic water changes, etc (limited by your imagination).
 
 For DS3231 Library use https://github.com/NorthernWidget/DS3231/releases
 
-Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, and some of them are already included (within Arduino). Please google for "how-to" if you cannot figure it .
+Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, and some of them are already included (within Arduino). Please google for "how-to" if you cannot figure it.
 
 Please add http://arduino.esp8266.com/stable/package_esp8266com_index.json in File --> Preferences --> Additional Boards Manager URLs to get support for all ESP Boards.
 
