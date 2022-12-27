@@ -3,7 +3,7 @@
 ### What's New?
 * Completely New WebServer UI
 * Uses new Asynchronous Webserver
-* Real time page update using JS XMLHTTPREQUESTS
+* Real time page update using JS XMLHTTPREQUEST
 * Uses ESP-NOW to broadcast time to other ESPs without dedicated RTC modules
 * Better organised code
 
