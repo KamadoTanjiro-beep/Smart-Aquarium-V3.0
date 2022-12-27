@@ -16,8 +16,9 @@ Using NodeMCU for aquarium lights, filter, skimmer, power head/wavemaker control
 Disclaimer: I take absolutely no responsibility for the use of this code. Use it with your own risk.
 
 ##It works as "smart switches" which turns something on or off automatically (by time or manually). This can be applied to varied of things and can be expanded as automatic dosers, automatic water changes, etc (limited by your imagination).
-
-For DS3231 Library use https://github.com/NorthernWidget/DS3231/releases
+## Libraries (Specific few)
+1. For DS3231 Library use https://github.com/NorthernWidget/DS3231
+2. https://github.com/arduino-libraries/NTPClient
 
 Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, and some of them are already included (within Arduino). Please google for "how-to" if you cannot figure it.
 
