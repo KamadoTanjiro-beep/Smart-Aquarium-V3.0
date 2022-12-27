@@ -63,4 +63,4 @@ Other parts as required
 
 ## WEB SERVER
 
-<img src="https://github.com/chikne97/Smart-Aquarium-V3.0/blob/main/demo2.png" alt="OLED" width="400" height="800"> <br/>
+<img src="https://github.com/chikne97/Smart-Aquarium-V3.0/blob/main/demo2.png" alt="OLED" width="600" height="800"> <br/>
