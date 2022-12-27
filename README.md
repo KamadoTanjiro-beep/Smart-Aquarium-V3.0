@@ -8,6 +8,7 @@
 * Better organised code
 * Displays current status of relay on webserver using intuitive font
 * Now using Solid State Relays over Mechanical one
+* Just make the circuit as mentioned below and upload the code (You may want to check gateway address)
 
 FOR ANY KIND OF QUESTIONS OR QUERIES PLEASE CONTACT ME HERE: https://thingsbypatra.pythonanywhere.com/contact
 
