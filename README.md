@@ -6,10 +6,11 @@
 * Real time page update using JS XMLHTTPREQUEST
 * Uses ESP-NOW to broadcast time to other ESPs without dedicated RTC modules
 * Better organised code
+* Displays current status of relay on webserver using intuitive font
 
 FOR ANY KIND OF QUESTIONS OR QUERIES PLEASE CONTACT ME HERE: https://thingsbypatra.pythonanywhere.com/contact
 
-Also, this code needs some optimisations (I believe that) so, if you have updated something and it works better than mine, then please let me know.
+Also, this code needs some optimisations, so, if you have updated something and it works better than mine, then please let me know.
 
 Using NodeMCU for aquarium lights, filter, skimmer, power head/wavemaker control with OTA updates, timers, auto time update, visual feedbacks and WiFi signal level icons.
 
