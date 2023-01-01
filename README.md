@@ -6,6 +6,7 @@
 * Real time page update using JS XMLHTTPREQUEST
 * Uses ESP-NOW to broadcast time to other ESPs without dedicated RTC modules
 * Better organised code
+* 4 Modes: Auto, Power Saver, Timer, Manual
 * Displays current status of relay on webserver using intuitive font
 * Now using Solid State Relays over Mechanical one
 * Just make the circuit as mentioned below and upload the code (You may want to check gateway address)
