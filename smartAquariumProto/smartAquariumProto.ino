@@ -6,7 +6,7 @@ ORIGINAL:
 
 Modified:
 Aniket Patra
-24/12/2022 (started earlier)
+24/12/2022 (started earlier) V1.0.0.0 
 
 Button | Code
 -------|------
@@ -24,6 +24,10 @@ PSO    |   6
 -------|------
 PSOFF  |   7
 -------|------
+PSOT   |   8
+-------|------
+PSOFFT |   9
+-------|------
 
 RELAY  | Count
 -------|------
@@ -38,8 +42,12 @@ RELAY4 |   4
 RELAY5 |   5
 -------|------
 
-
-
+31/12/22 V1.0.1.0
+-Feature Update
+*Power Saver Mode can now show remaining time on web server (in notification area)
+*Power Saver Mode can now accept ON Period and OFF Period from Webserver.
+*Enabled Power Saver for every relay
+*Few optimisations
 *********/
 
 // Import required libraries
@@ -291,6 +299,21 @@ const byte relayPin2 = 12;
 const byte relayPin3 = 13;
 const byte relayPin4 = 14;
 
+// Name (to be shown on webserver) as per relay gpio pins
+const String relay1Name = "Power Head";
+const String relay2Name = "Surface Skimmer";
+const String relay3Name = "Filter";
+const String relay4Name = "Light";
+
+#define RELAY1ON digitalWrite(relayPin1, HIGH)
+#define RELAY1OFF digitalWrite(relayPin1, LOW)
+#define RELAY2ON digitalWrite(relayPin2, HIGH)
+#define RELAY2OFF digitalWrite(relayPin2, LOW)
+#define RELAY3ON digitalWrite(relayPin3, HIGH)
+#define RELAY3OFF digitalWrite(relayPin3, LOW)
+#define RELAY4ON digitalWrite(relayPin4, HIGH)
+#define RELAY4OFF digitalWrite(relayPin4, LOW)
+
 // Relay Timing and definitions
 typedef struct relaystruct {
   int onTime,offTime,count;
@@ -298,33 +321,32 @@ typedef struct relaystruct {
   bool activate;
   byte flag,powerSave,psAlt;
   String relayState;
-  unsigned long lastAutoTimer,autoTimerDelay,pslastTime,pstimerDelay;
+  unsigned long lastAutoTimer,autoTimerDelay,pslastTime,psTimerDelay,psTimerDelayOn,psTimerDelayOff;
 } struct_relay;
 
 // timer settings for autotimers
  // example if it would have to check after 5 mins i.e. 5*60*1000=300000
-// Auxiliar variables to store the current output state
-/* first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, second one is turn "OFF" time, the third one is Relay Number, the fourth parameter Config=1 means auto (based on timer),Config=0 means Manual and Config=2 means PowSave. Same for aquarium light
-fifth parameter autoTimer is denoting if timer is on(1) or off(0), sixth parameter mark true to activate, and false to deactivate (activation means the timer activation), psAlt=2 means garbage state*/
-struct_relay relay1={1200,1900,1,0,0,false,0,0,2,"OFF",0,0,0,0};
-#define RELAY1ON digitalWrite(relayPin1, HIGH)
-#define RELAY1OFF digitalWrite(relayPin1, LOW)
+// 
 
-// first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, second one is turn "OFF" time, and the last one is Relay Number
-struct_relay relay2={1200,1900,2,2,0,false,0,1,2,"OFF",0,0,0,0};
-#define RELAY2ON digitalWrite(relayPin2, HIGH)
-#define RELAY2OFF digitalWrite(relayPin2, LOW)
+/* first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, 
+second one is turn "OFF" time, 
+the third one is Relay Number, 
+the fourth parameter Config=1 means auto (based on timer),Config=0 means Manual and Config=2 means PowSave. Same for aquarium light,
+fifth parameter autoTimer is denoting if timer is on(1) or off(0), 
+sixth parameter mark true to activate, and false to deactivate (activation means the timer activation),
+seventh parameter flag is variable to store the current output state,
+eigth parameter powerSave is denoting if PowerSave is on(1) or off(0), 
+psAlt=2 means garbage state, used to alternate on and off during powersaver mode working,
+tenth param, relayState is used in webserver to show ON or OFF,
+11th, 12th, 13th used to autotimer,
+14th is powersaver temp. variable, 15th powersaver on time, 16th powersaver off time
 
-// first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, second one is turn "OFF" time, and the last one is Relay Number
-struct_relay relay3={1200,1900,3,0,0,false,0,0,2,"OFF",0,0,0,0};
-#define RELAY3ON digitalWrite(relayPin3, HIGH)
-#define RELAY3OFF digitalWrite(relayPin3, LOW)
+BELOW ARE INITIALISATION OF RELAYS*/
 
-// first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, second one is turn "OFF" time, and the last one is Relay Number
-struct_relay relay4={800,1900,4,1,0,true,0,0,2,"OFF",0,0,0,0};
-#define RELAY4ON digitalWrite(relayPin4, HIGH)
-#define RELAY4OFF digitalWrite(relayPin4, LOW)
-
+struct_relay relay1={1200,1900,1,0,0,false,0,0,2,"OFF",0,0,0,0,600000,600000};
+struct_relay relay2={1200,1900,2,2,0,false,0,1,2,"OFF",0,0,0,0,600000,1800000};
+struct_relay relay3={1200,1900,3,0,0,false,0,0,2,"OFF",0,0,0,0,600000,600000};
+struct_relay relay4={800,1900,4,1,0,true,0,0,2,"OFF",0,0,0,0,600000,600000};
 
 /*void relayInitialize()  // checks and initializes all relay in case of powerloss (takes effect only if relay is activated above). Default: Turns ON the relay if no timer is set
 {
@@ -398,7 +420,36 @@ String processor(const String &var) {
     } else if (relay1.config == 1)
       buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(1,1)\" type=\"button\">AUTO</button>";
     else if (relay1.config == 2)
-      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(1,7)\" type=\"button\">POWER SAVER OFF</button>";
+    {
+      String timeOn;
+      String timeOff;
+      byte minOn = (relay1.psTimerDelayOn/1000)/60;
+      byte minOff = (relay1.psTimerDelayOff/1000)/60;
+      timeOn=String(minOn)+" min";
+      timeOff=String(minOff)+" min";
+      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(1,7)\" type=\"button\">POWER SAVER OFF</button>\
+      <hr>\
+              <div class=\"row\">\
+                <div class=\"col-sm-6\"><span>ON: "+timeOn+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"1\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(1,8)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+                <div class=\"col-sm-6\"><span>OFF: "+timeOff+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"11\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(1,9)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+              </div>";
+    }
     return buttons;
   }
 
@@ -407,7 +458,25 @@ String processor(const String &var) {
     if (relay1.autoTimer == 1)
       notify += "TIMER ACTIVE";
     else if (relay1.config == 2)
-      notify += "POWER SAVER ACTIVE";
+    {
+      unsigned long milli = millis() - relay1.pslastTime;
+      unsigned long remainMilli = relay1.psTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "POWER SAVER ACTIVE - "+ min + ":" + sec;
+
+    }
     else if (relay1.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
     return notify;
@@ -425,7 +494,36 @@ String processor(const String &var) {
     } else if (relay2.config == 1)
       buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(2,1)\" type=\"button\">AUTO</button>";
     else if (relay2.config == 2)
-      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(2,7)\" type=\"button\">POWER SAVER OFF</button>";
+    {
+      String timeOn;
+      String timeOff;
+      byte minOn = (relay2.psTimerDelayOn/1000)/60;
+      byte minOff = (relay2.psTimerDelayOff/1000)/60;
+      timeOn=String(minOn)+" min";
+      timeOff=String(minOff)+" min";
+      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(2,7)\" type=\"button\">POWER SAVER OFF</button>\
+      <hr>\
+              <div class=\"row\">\
+                <div class=\"col-sm-6\"><span>ON: "+timeOn+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"2\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(2,8)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+                <div class=\"col-sm-6\"><span>OFF: "+timeOff+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"22\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(2,9)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+              </div>";
+    }
     return buttons;
   }
 
@@ -434,7 +532,25 @@ String processor(const String &var) {
     if (relay2.autoTimer == 1)
       notify += "TIMER ACTIVE";
     else if (relay2.config == 2)
-      notify += "POWER SAVER ACTIVE";
+    {
+      unsigned long milli = millis() - relay2.pslastTime;
+      unsigned long remainMilli = relay2.psTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "POWER SAVER ACTIVE - "+ min + ":" + sec;
+
+    }
     else if (relay2.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
     return notify;
@@ -452,7 +568,36 @@ String processor(const String &var) {
     } else if (relay3.config == 1)
       buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(3,1)\" type=\"button\">AUTO</button>";
     else if (relay3.config == 2)
-      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(3,7)\" type=\"button\">POWER SAVER OFF</button>";
+      {
+      String timeOn;
+      String timeOff;
+      byte minOn = (relay3.psTimerDelayOn/1000)/60;
+      byte minOff = (relay3.psTimerDelayOff/1000)/60;
+      timeOn=String(minOn)+" min";
+      timeOff=String(minOff)+" min";
+      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(3,7)\" type=\"button\">POWER SAVER OFF</button>\
+      <hr>\
+              <div class=\"row\">\
+                <div class=\"col-sm-6\"><span>ON: "+timeOn+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"3\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(3,8)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+                <div class=\"col-sm-6\"><span>OFF: "+timeOff+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"33\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(3,9)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+              </div>";
+    }
     return buttons;
   }
 
@@ -461,7 +606,25 @@ String processor(const String &var) {
     if (relay3.autoTimer == 1)
       notify += "TIMER ACTIVE";
     else if (relay3.config == 2)
-      notify += "POWER SAVER ACTIVE";
+      {
+      unsigned long milli = millis() - relay3.pslastTime;
+      unsigned long remainMilli = relay3.psTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "POWER SAVER ACTIVE - "+ min + ":" + sec;
+
+    }
     else if (relay3.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
     return notify;
@@ -479,7 +642,36 @@ String processor(const String &var) {
     } else if (relay4.config == 1)
       buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(4,1)\" type=\"button\">AUTO</button>";
     else if (relay4.config == 2)
-      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(4,7)\" type=\"button\">POWER SAVER OFF</button>";
+      {
+      String timeOn;
+      String timeOff;
+      byte minOn = (relay4.psTimerDelayOn/1000)/60;
+      byte minOff = (relay4.psTimerDelayOff/1000)/60;
+      timeOn=String(minOn)+" min";
+      timeOff=String(minOff)+" min";
+      buttons += "<button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(4,7)\" type=\"button\">POWER SAVER OFF</button>\
+      <hr>\
+              <div class=\"row\">\
+                <div class=\"col-sm-6\"><span>ON: "+timeOn+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"4\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(4,8)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+                <div class=\"col-sm-6\"><span>OFF: "+timeOff+"</span>\
+                  <select class=\"form-select m-sm-1\" id=\"44\" aria-label=\"Default select example\">\
+                    <option value=\"0\" selected>Select</option>\
+                    <option value=\"5\">05 Minutes</option>\
+                    <option value=\"10\">10 Minutes</option>\
+                    <option value=\"30\">30 Minutes</option>\
+                  </select><button class=\"btn btn-secondary m-1\" onclick=\"sendButtState(4,9)\"\
+                    type=\"button\">SAVE</button>\
+                </div>\
+              </div>";
+    }
     return buttons;
   }
 
@@ -488,7 +680,25 @@ String processor(const String &var) {
     if (relay4.autoTimer == 1)
       notify += "TIMER ACTIVE";
     else if (relay4.config == 2)
-      notify += "POWER SAVER ACTIVE";
+      {
+      unsigned long milli = millis() - relay4.pslastTime;
+      unsigned long remainMilli = relay4.psTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "POWER SAVER ACTIVE - "+ min + ":" + sec;
+
+    }
     else if (relay4.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
     return notify;
@@ -563,6 +773,27 @@ String processor(const String &var) {
       state += "<h1 class=\"cardOn\">ON</h1>";
     return state;
   }
+  if (var == "NAME1") {
+    String name = "";
+    name += relay1Name;
+    return name;
+  }
+  if (var == "NAME2") {
+    String name = "";
+    name += relay2Name;
+    return name;
+  }
+  if (var == "NAME3") {
+    String name = "";
+    name += relay3Name;
+    return name;
+  }
+  if (var == "NAME4") {
+    String name = "";
+    name += relay4Name;
+    return name;
+  }
+
   //*****************************STATUS END**************************
   return String();
 }
@@ -657,7 +888,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                   %STATE1%
                 </div>
                 <div class="card-body">
-                  <h5 class="card-title">POWERHEAD</h5>
+                  <h5 class="card-title">%NAME1%</h5>
                   <div class="row d-flex justify-content-center">
                     <div class="d-grid gap-2 d-md-block" id="BUTTONGROUP1">
                       %BUTTONGROUP1%
@@ -674,7 +905,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                   %STATE2%
                 </div>
                 <div class="card-body">
-                  <h5 class="card-title">SKIMMER</h5>
+                  <h5 class="card-title">%NAME2%</h5>
                   <div class="row d-flex justify-content-center">
                     <div class="d-grid gap-2 d-md-block" id="BUTTONGROUP2">
                       %BUTTONGROUP2%
@@ -691,7 +922,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                   %STATE3%
                 </div>
                 <div class="card-body">
-                  <h5 class="card-title">FILTER</h5>
+                  <h5 class="card-title">%NAME3%</h5>
                   <div class="row d-flex justify-content-center">
                     <div class="d-grid gap-2 d-md-block" id="BUTTONGROUP3">
                       %BUTTONGROUP3%
@@ -708,7 +939,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                   %STATE4%
                 </div>
                 <div class="card-body">
-                  <h5 class="card-title">LIGHT</h5>
+                  <h5 class="card-title">%NAME4%</h5>
                   <div class="row d-flex justify-content-center">
                     <div class="d-grid gap-2 d-md-block" id="BUTTONGROUP4">
                     %BUTTONGROUP4%                      
@@ -765,7 +996,11 @@ function updateTime(){
     var notification=["NOTIFICATION0","NOTIFICATION1","NOTIFICATION2","NOTIFICATION3","NOTIFICATION4","NOTIFICATION5"];
     
     function sendButtState(count,code) {
-      try{var x = document.getElementById(count).value;
+      try{
+        if (code == 9)
+          var x = document.getElementById(count*11).value;
+        else
+          var x = document.getElementById(count).value;
       var xhr = new XMLHttpRequest();
       xhr.open("GET", "/apiButt?count="+count+"&code="+code+"&state="+x, true);
       xhr.send();
@@ -852,7 +1087,7 @@ function updateTime(){
         codeUpdate(notification[index]);
       }
     }
-    var myInterval = setInterval(autoUpdate, 10000);
+    var myInterval = setInterval(autoUpdate, 5000);
 
   function codeUpdate(x) {
     var xhr = new XMLHttpRequest();
@@ -1145,7 +1380,24 @@ void setup() {
       OLEDStatus = 1;
     else if (relay == 5 && button == 4)
       OLEDStatus = 0;
-
+    //PowerSaver Time Set
+    else if (relay == 1 && button == 8)
+      relay1.psTimerDelayOn=value*60*1000;
+    else if (relay == 1 && button == 9)
+      relay1.psTimerDelayOff=value*60*1000;
+    else if (relay == 2 && button == 8)
+      relay2.psTimerDelayOn=value*60*1000;
+    else if (relay == 2 && button == 9)
+      relay2.psTimerDelayOff=value*60*1000;
+    else if (relay == 3 && button == 8)
+      relay3.psTimerDelayOn=value*60*1000;
+    else if (relay == 3 && button == 9)
+      relay3.psTimerDelayOff=value*60*1000;
+    else if (relay == 4 && button == 8)
+      relay4.psTimerDelayOn=value*60*1000;
+    else if (relay == 4 && button == 9)
+      relay4.psTimerDelayOff=value*60*1000;
+    //***************************************
     else if (relay == 1 && button == 2) {
       relay1.autoTimer = 1;
       relay1.lastAutoTimer = millis();
@@ -1162,19 +1414,33 @@ void setup() {
       relay4.autoTimer = 1;
       relay4.lastAutoTimer = millis();
       relay4.autoTimerDelay = value * 60 * 1000;
-    } else if (relay == 1 && button == 6) {
+    } 
+    //POWER SAVER MODE ENABLE DISABLE
+    else if (relay == 1 && button == 6) {
       relay1.autoTimer = 0;  // turn off timer (if any)
       relay1.powerSave = 1;
       relay1.config = 2;
-    } else if (relay == 1 && button == 7) {
+    } else if (relay == 1 && button == 7) 
       relay1.config = 1;  // revert to auto
-    } else if (relay == 2 && button == 6) {
+    else if (relay == 2 && button == 6) {
       relay2.autoTimer = 0;  // turn off timer (if any)
       relay2.powerSave = 1;
       relay2.config = 2;
-    } else if (relay == 2 && button == 7) {
+    } else if (relay == 2 && button == 7) 
       relay2.config = 1;  // revert to auto
-    }
+    else if (relay == 3 && button == 6) {
+      relay3.autoTimer = 0;  // turn off timer (if any)
+      relay3.powerSave = 1;
+      relay3.config = 2;
+    } else if (relay == 3 && button == 7) 
+      relay3.config = 1;  // revert to auto
+    else if (relay == 4 && button == 6) {
+      relay4.autoTimer = 0;  // turn off timer (if any)
+      relay4.powerSave = 1;
+      relay4.config = 2;
+    } else if (relay == 4 && button == 7) 
+      relay4.config = 1;  // revert to auto
+    //***************************************************
     request->send(200, "text/plain", "OK");
   });
 
@@ -1265,9 +1531,9 @@ void loop() {
 
   ArduinoOTA.handle();
   //****************************************RELAY POWERSAVE FEATURE********************************
-  // RELAY 1 10 min ON and 20 min OFF
+  // RELAY 1
   if (relay1.powerSave == 1) {
-    relay1.pstimerDelay = 600000;  // 10 mins
+    relay1.psTimerDelay = relay1.psTimerDelayOn;  // 10 mins
     relay1.pslastTime = millis();
     RELAY1ON;
     relay1.powerSave = 0;
@@ -1279,20 +1545,20 @@ void loop() {
   }
 
   if (relay1.psAlt == 1 && relay1.config == 2) {
-    if ((millis() - relay1.pslastTime) > relay1.pstimerDelay) {
+    if ((millis() - relay1.pslastTime) > relay1.psTimerDelay) {
       RELAY1OFF;
       relay1.psAlt = 0;
-      relay1.pstimerDelay = 600000;
+      relay1.psTimerDelay = relay1.psTimerDelayOff;
       relay1.pslastTime = millis();
 
       relay1.flag = 0;
       relay1.relayState = "OFF";
     }
   } else if (relay1.psAlt == 0 && relay1.config == 2) {
-    if ((millis() - relay1.pslastTime) > relay1.pstimerDelay) {
+    if ((millis() - relay1.pslastTime) > relay1.psTimerDelay) {
       RELAY1ON;
       relay1.psAlt = 1;
-      relay1.pstimerDelay = 600000;
+      relay1.psTimerDelay = relay1.psTimerDelayOn;
       relay1.pslastTime = millis();
 
       relay1.flag = 1;
@@ -1300,9 +1566,9 @@ void loop() {
     }
   }
 
-  // RELAY 2 10 min ON and 10 min OFF
+  // RELAY 2
   if (relay2.powerSave == 1) {
-    relay2.pstimerDelay = 600000;  // 10 mins
+    relay2.psTimerDelay = relay2.psTimerDelayOn;  
     relay2.pslastTime = millis();
     RELAY2ON;
     relay2.powerSave = 0;
@@ -1314,24 +1580,94 @@ void loop() {
   }
 
   if (relay2.psAlt == 1 && relay2.config == 2) {
-    if ((millis() - relay2.pslastTime) > relay2.pstimerDelay) {
+    if ((millis() - relay2.pslastTime) > relay2.psTimerDelay) {
       RELAY2OFF;
       relay2.psAlt = 0;
-      relay2.pstimerDelay = 600000;
+      relay2.psTimerDelay = relay2.psTimerDelayOff;
       relay2.pslastTime = millis();
 
       relay2.flag = 0;
       relay2.relayState = "OFF";
     }
   } else if (relay2.psAlt == 0 && relay2.config == 2) {
-    if ((millis() - relay2.pslastTime) > relay2.pstimerDelay) {
+    if ((millis() - relay2.pslastTime) > relay2.psTimerDelay) {
       RELAY2ON;
       relay2.psAlt = 1;
-      relay2.pstimerDelay = 600000;
+      relay2.psTimerDelay = relay2.psTimerDelayOn;
       relay2.pslastTime = millis();
 
       relay2.flag = 1;
       relay2.relayState = "ON";
+    }
+  }
+
+  // RELAY 3
+  if (relay3.powerSave == 1) {
+    relay3.psTimerDelay = relay3.psTimerDelayOn;  
+    relay3.pslastTime = millis();
+    RELAY3ON;
+    relay3.powerSave = 0;
+    relay3.psAlt = 1;
+
+    relay3.flag = 1;
+    relay3.relayState = "ON";
+    relay3.config = 2;
+  }
+
+  if (relay3.psAlt == 1 && relay3.config == 2) {
+    if ((millis() - relay3.pslastTime) > relay3.psTimerDelay) {
+      RELAY3OFF;
+      relay3.psAlt = 0;
+      relay3.psTimerDelay = relay3.psTimerDelayOff;
+      relay3.pslastTime = millis();
+
+      relay3.flag = 0;
+      relay3.relayState = "OFF";
+    }
+  } else if (relay3.psAlt == 0 && relay3.config == 2) {
+    if ((millis() - relay3.pslastTime) > relay3.psTimerDelay) {
+      RELAY3ON;
+      relay3.psAlt = 1;
+      relay3.psTimerDelay = relay3.psTimerDelayOn;
+      relay3.pslastTime = millis();
+
+      relay3.flag = 1;
+      relay3.relayState = "ON";
+    }
+  }
+
+  // RELAY 4
+  if (relay4.powerSave == 1) {
+    relay4.psTimerDelay = relay4.psTimerDelayOn;  
+    relay4.pslastTime = millis();
+    RELAY4ON;
+    relay4.powerSave = 0;
+    relay4.psAlt = 1;
+
+    relay4.flag = 1;
+    relay4.relayState = "ON";
+    relay4.config = 2;
+  }
+
+  if (relay4.psAlt == 1 && relay4.config == 2) {
+    if ((millis() - relay4.pslastTime) > relay4.psTimerDelay) {
+      RELAY4OFF;
+      relay4.psAlt = 0;
+      relay4.psTimerDelay = relay4.psTimerDelayOff;
+      relay4.pslastTime = millis();
+
+      relay4.flag = 0;
+      relay4.relayState = "OFF";
+    }
+  } else if (relay4.psAlt == 0 && relay4.config == 2) {
+    if ((millis() - relay4.pslastTime) > relay4.psTimerDelay) {
+      RELAY4ON;
+      relay4.psAlt = 1;
+      relay4.psTimerDelay = relay4.psTimerDelayOn;
+      relay4.pslastTime = millis();
+
+      relay4.flag = 1;
+      relay4.relayState = "ON";
     }
   }
   //**************************************END RELAY POWER SAVE FEATURE****************************************
