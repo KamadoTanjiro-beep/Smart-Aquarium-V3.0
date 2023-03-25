@@ -401,8 +401,8 @@ void relayInitialize()
   }
 }
 
-// ESPNOW#####################################################
-//  REPLACE WITH RECEIVER MAC Address
+// REMOVE this section if you don't want to broadcast time data to other ESPs #####################################################
+//  ESPNOW: REPLACE WITH RECEIVER MAC Address
 uint8_t broadcastAddress[] = { 0xF4, 0xCF, 0xA2, 0xF0, 0x0A, 0xE3 };
 // Structure example to send data
 // Must match the receiver structure
@@ -411,7 +411,6 @@ typedef struct struct_message {
 } struct_message;
 
 struct_message myData;
-
 /* 
 Callback when data is sent
 */
@@ -423,6 +422,8 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
     Serial.println("Delivery fail");
   }
 }
+// ESPNOW END #####################################################
+
 
 /*
 Replaces placeholder with button section in your web page
@@ -1599,6 +1600,7 @@ void setup() {
   // Start server
   server.begin();
 
+//REMOVE this section if you don't want to broadcast time data to other ESPs ############################################
   // Init ESP-NOW
   if (esp_now_init() != 0) {
     display.println(F("Error in ESP-NOW"));
@@ -1617,6 +1619,7 @@ void setup() {
 
   // Register peer
   esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
+// ESP NOW ENDS ###################################################################################
 
   display.println(F("SETTING RELAYS"));
   Serial.println("Setting Relays");
@@ -1893,6 +1896,8 @@ void loop() {
     lastTime1 = millis();
   }
 
+
+//REMOVE this section if you don't want to broadcast time data to other ESPs ############################################
   // ESP NOW Send time
   if ((millis() - lastTime2) > timerDelay2) {
     // Set values to send
@@ -1907,6 +1912,7 @@ void loop() {
 
     // Send message via ESP-NOW
     esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+//ESP NOW END #################################################################################
 
     lastTime2 = millis();
   }
