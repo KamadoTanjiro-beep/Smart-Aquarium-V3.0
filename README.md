@@ -1,6 +1,6 @@
 # Aquarium Automation using NodeMCU ESP-12E V3.0
 
-## Disclaimer: I take absolutely no responsibility for the things that may happen due to the use of this code. Use it with your own risk. If you are a minor work under proper supervision. HIGH VOLTAGE electricity involved!! Proceed with extreme caution.
+## Disclaimer: I take absolutely no responsibility for any accidents that may happen due to the use of this code. Use it with your own risk. If you are a minor work under proper supervision. HIGH VOLTAGE electricity involved!! Proceed with extreme caution.
 
 ### What's New?
 * Completely New WebServer UI
