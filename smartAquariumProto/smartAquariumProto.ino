@@ -47,7 +47,21 @@ RELAY5 |   5
 *Power Saver Mode can now show remaining time on web server (in notification area)
 *Power Saver Mode can now accept ON Period and OFF Period from Webserver.
 *Enabled Power Saver for every relay
-*Few optimisations
+*Few optimisations on Code placement
+
+25/03/23 V1.0.1.1
+-UI Improve
+*When manual conntrol is active, it is shown in notification area of that Relay (Webserver)
+*When Autotimer is ON it shows the remaining time
+
+-General Improvement
+*After configuration the relays were not turning ON after power ON, that was fix using relayInitialize Function
+*Time update during setup() only if year 1970 (DS3231 show 1970 as years when it resets somehow due to noise or some unknown cause)
+*Minor other issues
+*Initialisation Messages in setup() now only shows up if stuck (somehow) or in case of error, else it swiftly passes through all messages
+*Added more debug messages in setup()
+*Added more docstrings
+
 *********/
 
 // Import required libraries
@@ -300,9 +314,9 @@ const byte relayPin3 = 13;
 const byte relayPin4 = 14;
 
 // Name (to be shown on webserver) as per relay gpio pins
-const String relay1Name = "Power Head";
+const String relay1Name = "Filter 1";
 const String relay2Name = "Surface Skimmer";
-const String relay3Name = "Filter";
+const String relay3Name = "Filter 2";
 const String relay4Name = "Light";
 
 #define RELAY1ON digitalWrite(relayPin1, HIGH)
@@ -325,13 +339,13 @@ typedef struct relaystruct {
 } struct_relay;
 
 // timer settings for autotimers
- // example if it would have to check after 5 mins i.e. 5*60*1000=300000
-// 
+// example if it would have to check after 5 mins i.e. 5*60*1000=300000
 
-/* first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, 
+/* +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+first number is "ON" time in 24 hours. i.e. 2:35pm would be 1435, 
 second one is turn "OFF" time, 
-the third one is Relay Number, 
-the fourth parameter Config=1 means auto (based on timer),Config=0 means Manual and Config=2 means PowSave. Same for aquarium light,
+third one is Relay Number, 
+fourth parameter Config=1 means auto (based on timer),Config=0 means Manual and Config=2 means PowSave. Same for aquarium light,
 fifth parameter autoTimer is denoting if timer is on(1) or off(0), 
 sixth parameter mark true to activate, and false to deactivate (activation means the timer activation),
 seventh parameter flag is variable to store the current output state,
@@ -340,48 +354,38 @@ psAlt=2 means garbage state, used to alternate on and off during powersaver mode
 tenth param, relayState is used in webserver to show ON or OFF,
 11th, 12th, 13th used to autotimer,
 14th is powersaver temp. variable, 15th powersaver on time, 16th powersaver off time
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
-BELOW ARE INITIALISATION OF RELAYS*/
+Below are CONFIGURATION of relays*/
 
-struct_relay relay1={1200,1900,1,0,0,false,0,0,2,"OFF",0,0,0,0,600000,600000};
+struct_relay relay1={1200,1900,1,0,0,false,1,0,2,"ON",0,0,0,0,600000,600000};
 struct_relay relay2={1200,1900,2,2,0,false,0,1,2,"OFF",0,0,0,0,600000,1800000};
-struct_relay relay3={1200,1900,3,0,0,false,0,0,2,"OFF",0,0,0,0,600000,600000};
-struct_relay relay4={800,1900,4,1,0,true,0,0,2,"OFF",0,0,0,0,600000,600000};
+struct_relay relay3={1200,1900,3,0,0,false,1,0,2,"ON",0,0,0,0,600000,600000}; //I am using this for filter, which is crucial thing, hence by default it's ON and in Manual Mode
+struct_relay relay4={800,1800,4,1,0,true,0,0,2,"OFF",0,0,0,0,600000,600000};
 
-/*void relayInitialize()  // checks and initializes all relay in case of powerloss (takes effect only if relay is activated above). Default: Turns ON the relay if no timer is set
+/* 
+Checks configuration and turns on the relays or reads config from SPIFF(to be implemented later)
+Returns nothing.
+*/
+void relayInitialize()  
 {
-  if (relay1.activate) {
-    checkTimeFor(relay1.onTime,relay1.offTime,relay1.count);
-  } else {
+  if (relay1.flag==1) {
     RELAY1ON;
-    relay1.flag = 1;
     relay1.relayState = "ON";
   }
-
-  if (relay2.activate) {
-    checkTimeFor(relay2.onTime,relay2.offTime,relay2.count);
-  } else {
+  if (relay2.flag==1) {
     RELAY2ON;
-    relay2.flag = 1;
     relay2.relayState = "ON";
   }
-
-  if (relay3.activate) {
-    checkTimeFor(relay3.onTime,relay3.offTime,relay3.count);
-  } else {
+  if (relay3.flag==1) {
     RELAY3ON;
-    relay3.flag = 1;
     relay3.relayState = "ON";
   }
-
-  if (relay4.activate) {
-    checkTimeFor(relay4.onTime,relay4.offTime,relay4.count);
-  } else {
+  if (relay4.flag==1) {
     RELAY4ON;
-    relay4.flag = 1;
     relay4.relayState = "ON";
   }
-}*/
+}
 
 // ESPNOW#####################################################
 //  REPLACE WITH RECEIVER MAC Address
@@ -394,17 +398,21 @@ typedef struct struct_message {
 
 struct_message myData;
 
-// Callback when data is sent
+/* 
+Callback when data is sent
+*/
 void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
-  // Serial.print("Last Packet Send Status: ");
+  Serial.print("Last Packet Send Status: ");
   if (sendStatus == 0) {
-    // Serial.println("Delivery success");
+    Serial.println("Delivery success");
   } else {
-    // Serial.println("Delivery fail");
+    Serial.println("Delivery fail");
   }
 }
 
-// Replaces placeholder with button section in your web page
+/*
+Replaces placeholder with button section in your web page
+*/
 String processor(const String &var) {
   // Serial.println(var);
   //*****************************BUTTONS GROUP BEGIN**************************
@@ -456,7 +464,22 @@ String processor(const String &var) {
   if (var == "NOTIFICATION1") {
     String notify = "";
     if (relay1.autoTimer == 1)
-      notify += "TIMER ACTIVE";
+      {unsigned long milli = millis() - relay1.lastAutoTimer;
+      unsigned long remainMilli = relay1.autoTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "TURNING ON IN - "+ min + ":" + sec;}
     else if (relay1.config == 2)
     {
       unsigned long milli = millis() - relay1.pslastTime;
@@ -479,6 +502,8 @@ String processor(const String &var) {
     }
     else if (relay1.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
+    else if (relay1.config == 0)
+      notify += "MANUAL CONTROL";
     return notify;
   }
 
@@ -530,7 +555,24 @@ String processor(const String &var) {
   if (var == "NOTIFICATION2") {
     String notify = "";
     if (relay2.autoTimer == 1)
-      notify += "TIMER ACTIVE";
+    {
+      unsigned long milli = millis() - relay2.lastAutoTimer;
+      unsigned long remainMilli = relay2.autoTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "TURNING ON IN - "+ min + ":" + sec;
+    }
     else if (relay2.config == 2)
     {
       unsigned long milli = millis() - relay2.pslastTime;
@@ -553,6 +595,8 @@ String processor(const String &var) {
     }
     else if (relay2.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
+    else if (relay2.config == 0)
+      notify += "MANUAL CONTROL";
     return notify;
   }
 
@@ -604,7 +648,23 @@ String processor(const String &var) {
   if (var == "NOTIFICATION3") {
     String notify = "";
     if (relay3.autoTimer == 1)
-      notify += "TIMER ACTIVE";
+      {unsigned long milli = millis() - relay3.lastAutoTimer;
+      unsigned long remainMilli = relay3.autoTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "TURNING ON IN - "+ min + ":" + sec;
+      }
     else if (relay3.config == 2)
       {
       unsigned long milli = millis() - relay3.pslastTime;
@@ -627,6 +687,8 @@ String processor(const String &var) {
     }
     else if (relay3.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
+    else if (relay3.config == 0)
+      notify += "MANUAL CONTROL";
     return notify;
   }
 
@@ -678,7 +740,24 @@ String processor(const String &var) {
   if (var == "NOTIFICATION4") {
     String notify = "";
     if (relay4.autoTimer == 1)
-      notify += "TIMER ACTIVE";
+      {
+      unsigned long milli = millis() - relay4.lastAutoTimer;
+      unsigned long remainMilli = relay4.autoTimerDelay - milli;
+      int minI = (remainMilli/1000)/60;
+      int secI = (remainMilli/1000)%60;
+      String min,sec;
+      if(minI<10)
+        min = "0"+String(minI);
+      else
+        min = String(minI);
+
+      if(secI<10)
+        sec = "0"+String(secI);
+      else
+        sec = String(secI);
+
+      notify += "TURNING ON IN - "+ min + ":" + sec;
+      }
     else if (relay4.config == 2)
       {
       unsigned long milli = millis() - relay4.pslastTime;
@@ -701,6 +780,8 @@ String processor(const String &var) {
     }
     else if (relay4.config == 1)
       notify += "AUTOMATIC CONTROL ACTIVE";
+    else if (relay4.config == 0)
+      notify += "MANUAL CONTROL";
     return notify;
   }
 
@@ -720,7 +801,7 @@ String processor(const String &var) {
   if (var == "NOTIFICATION5") {
     String notify = "";
     if (OLEDConfig == 0)
-      notify += "MANUAL CONTROL ACTIVE";
+      notify += "MANUAL CONTROL";
     else
       notify += "AUTOMATIC CONTROL ACTIVE";
     return notify;
@@ -798,7 +879,9 @@ String processor(const String &var) {
   return String();
 }
 
-
+/*
+HTML code to be served to the client
+*/
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -1039,7 +1122,7 @@ function updateTime(){
     }}
   </script>
   <script>
-    var week = ["Sunday", "Monday", "Tueday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    var week = ["Monday", "Tueday", "Wednesday", "Thursday", "Friday", "Saturday","Sunday"]
     function everyTime() {
       var xhr = new XMLHttpRequest();
       xhr.open("GET", "/time?state=1", true);
@@ -1063,7 +1146,7 @@ function updateTime(){
           if (myArray[4].length == 1)
             myArray[4] = "0" + myArray[4];
 
-          let word = myArray[0] + ':' + myArray[1] + ', ' + myArray[3] + '/' + myArray[4] + '/20' + myArray[5] + ', ' + week[parseInt(myArray[6])] + ', ' + myArray[2] + '&deg;C';
+          let word = myArray[0] + ':' + myArray[1] + ', ' + myArray[3] + '/' + myArray[4] + '/20' + myArray[5] + ', ' + week[parseInt(myArray[6])-1] + ', ' + myArray[2] + '&deg;C';
           document.getElementById('time').innerHTML = word;
           //console.log(`Done, got ${xhr.responseText} `);
         }
@@ -1164,14 +1247,19 @@ void setup() {
   Serial.println(ssid);
   WiFi.hostname(newHostname.c_str());  // Set new hostname
   WiFi.begin(ssid, password);
+
+  /*
+  count variable stores the status of WiFi connection. 1 means NOT CONNECTED. 0 means CONNECTED
+  */
   int count = 0;
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     display.clearDisplay();
     display.setTextSize(2);
     display.setCursor(0, 0);  // Start at top-left corner
     display.println(F("Connection\n\nFailed!"));
+    Serial.println("Connection Failed");
     display.display();
-    delay(5000);
+    delay(10000);
     // ESP.restart();
     count = 1;
     break;
@@ -1194,7 +1282,7 @@ void setup() {
     display.print("Type: ");
     display.print(type);
     display.display();
-    delay(2000);
+    delay(1000);
   });
   ArduinoOTA.onEnd([]() {
     display.clearDisplay();
@@ -1263,33 +1351,42 @@ void setup() {
     display.setTextSize(2);
     display.setCursor(0, 0);  // Start at top-left corner
     display.println(F("Connected!"));
+    Serial.println("Connected WIFI");
     display.setTextSize(1);
     display.println("");
     display.println(WiFi.SSID());
     display.print("\nIP address:\n");
     display.println(WiFi.localIP());
     display.display();
-
-    delay(4000);
+    delay(5000);
     display.clearDisplay();
     display.setCursor(0, 0);
 
     timeClient.begin();  // NTP time
-    timeClient.update();
+    bool x = timeClient.update();
 
-    display.println(F("Started Time Client"));
+    if(x==false)
+    {
+    display.println(F("Failed Time Client"));
+    Serial.println("Failed Time Client");
     display.display();
-    delay(2000);
+    delay(10000);
+    }
+    
     display.clearDisplay();
+    display.setCursor(0, 0);
 
-    updateRTC();
+    if (Clock.getYear() == 70)
+      updateRTC();
     display.clearDisplay();
+    display.setCursor(0, 0);
   }
 
     display.println(F("Setting Web Server"));
+    Serial.println("Setting Web Server");
     display.display();
-    delay(2000);
     display.clearDisplay();
+    display.setCursor(0, 0);
 
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -1488,20 +1585,16 @@ void setup() {
   // Start server
   server.begin();
 
-
   // Init ESP-NOW
   if (esp_now_init() != 0) {
     display.println(F("Error in ESP-NOW"));
+    Serial.println("Error ESP NOW");
     display.display();
-    delay(6000);
+    delay(10000);
     display.clearDisplay();
+    display.setCursor(0, 0);
     return;
-  }
-
-  display.println(F("START ESP-NOW"));
-    display.display();
-    delay(2000);
-    display.clearDisplay();
+  }  
 
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
@@ -1511,10 +1604,10 @@ void setup() {
   // Register peer
   esp_now_add_peer(broadcastAddress, ESP_NOW_ROLE_SLAVE, 1, NULL, 0);
 
-  display.println(F("SETUP RELAYS"));
+  display.println(F("SETTING RELAYS"));
+  Serial.println("Setting Relays");
   display.display();
-  delay(2000);
-  display.clearDisplay();
+  
 
   pinMode(relayPin1, OUTPUT);
   delay(500);
@@ -1524,7 +1617,10 @@ void setup() {
   delay(500);
   pinMode(relayPin4, OUTPUT);
   delay(500);
-  //relayInitialize();
+ 
+  relayInitialize();
+  display.clearDisplay();
+  Serial.println("Entering Main LOOP");
 }
 
 void loop() {
@@ -1802,6 +1898,9 @@ void loop() {
   }
 }
 
+/*
+Displays wifi signal level in form of icons. There are five levels, i.e. worst, poor, good, best, excellent
+*/
 void showWifiSignal() {
   int x = WiFi.RSSI();
   if (WiFi.status() != WL_CONNECTED) {
@@ -1822,6 +1921,9 @@ void showWifiSignal() {
   }
 }
 
+/*
+Gets current Time from DS3231 RTC and displays it on the Display at designated locations. Also, checks for error in time data due to RTC Reset.
+*/
 void showTime() {
   display.setTextSize(2);
   display.setTextColor(WHITE);
@@ -1858,6 +1960,9 @@ void showTime() {
     updateRTC();
 }
 
+/*
+Gets current EpochTime from timeClient, converts it into Local Time and updates the DS3231 RTC (Y,M,D,W,H,Min,S)
+*/
 void updateRTC() {
   display.clearDisplay();
   display.setCursor(30, 25);    // Start at top-left corner
@@ -1866,7 +1971,7 @@ void updateRTC() {
 
   display.println(F("Updating Time"));
   display.display();
-  delay(2000);
+  delay(500);
   timeClient.update();
   time_t rawtime = timeClient.getEpochTime();
   struct tm *ti;
@@ -1902,6 +2007,9 @@ void updateRTC() {
   Clock.setSecond(seconds);
 }
 
+/*
+Timer time checking. Checks for onTime and offTime.
+*/
 void checkTimeFor(int onTime, int offTime, int number) {
   int h = Clock.getHour(h12Flag, pmFlag);
   int m = Clock.getMinute();
@@ -1992,6 +2100,9 @@ void checkTimeFor(int onTime, int offTime, int number) {
   }
 }
 
+/*
+Checks for Relay status and displays the ON status for all the relays as R1, R2, R3, R4
+*/
 void relayStatusPrinter() {
   display.setTextSize(1);
   display.setTextColor(WHITE);
