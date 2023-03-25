@@ -1,5 +1,7 @@
 # Aquarium Automation using NodeMCU ESP-12E V3.0
 
+## Disclaimer: I take absolutely no responsibility for the things that may happen due to the use of this code. Use it with your own risk. If you are a minor work under proper supervision. HIGH VOLTAGE electricity involved!! Proceed with extreme caution.
+
 ### What's New?
 * Completely New WebServer UI
 * Uses new Asynchronous Webserver
@@ -16,8 +18,6 @@ FOR ANY KIND OF QUESTIONS OR QUERIES PLEASE CONTACT ME HERE: https://thingsbypat
 Also, this code needs some optimisations, so, if you have updated something and it works better than mine, then please let me know.
 
 Using NodeMCU for aquarium lights, filter, skimmer, power head/wavemaker control with OTA updates, timers, auto time update, visual feedbacks and WiFi signal level icons.
-
-Disclaimer: I take absolutely no responsibility for the use of this code. Use it with your own risk.
 
 ##It works as "smart switches" which turns something on or off automatically (by time or manually). This can be applied to varied of things and can be expanded as automatic dosers, automatic water changes, etc (limited by your imagination).
 ## Libraries (Specific few)
@@ -50,7 +50,10 @@ D7 --> In4 <br/>
 
 For GND and VCC, use appropriate separate power supply (don't take power from NodeMCU, may burn). If you are using separate powersupplies for NodeMCU and Relay, then make sure to connect both the GNDs of Node and Powersupply together, else the relay module won't work. If confused, take help from google or contact me.
 
-## MAIN Parts: <br/>
+## MAIN Parts: 
+### Use electrical switches in series with the relay for more control.
+
+<br/>
 <img src="https://robu.in/wp-content/uploads/2021/11/5v-4-channel-ssr-solid-state-relay-module-240v-2a-output-with-resistive-fuse-tech7978-6426-2-550x550-1.jpg" alt="Relay Board" width="200" height="200"> <br/>
 4 Channel 5V Relay Module Solid State High-Level SSR DC Control 250V 2A with Resistive Fuse <br/><br/>
 

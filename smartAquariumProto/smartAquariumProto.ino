@@ -42,6 +42,20 @@ RELAY4 |   4
 RELAY5 |   5
 -------|------
 
+################## UPCOMING FEATURES ######################
+1. Saving current configuration data in SPIFFS
+2. Autotimer for turning OFF after a certain duration
+###########################################################
+
+################## KNOWN BUGS ######################
+1. Most of the time it does not powers up after a power loss.
+TEMP. SOLUTION- Turn of the power supply. Disconnect all the equipments or turn of the switches if you have installed them as mentioned in README.
+Now, turn on the power supply, wait for the Display to light up, now turn on all the switches one by one or connect all the equipments.
+2. Even after applying selective update of html code in webserver using XMLHttpRequest(), in Autotimer section the drop down closes automatically due to code update. 
+Upon checking I found that the code is rendered different in the Browser and hence giving a illusion as if the code was changed.
+TEMP. SOLUTION- Select the choice of timer i.e. 5 min, 15 min or 30 min, quickly or as fast as possible haha (before the code updates itself in 5 sec).
+###########################################################
+
 31/12/22 V1.0.1.0
 -Feature Update
 *Power Saver Mode can now show remaining time on web server (in notification area)
