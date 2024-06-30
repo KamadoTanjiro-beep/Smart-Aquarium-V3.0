@@ -13,7 +13,6 @@
 * Now using Solid State Relays over Mechanical one
 * Just make the circuit as mentioned below and upload the code (You may want to check gateway address)
 
-FOR ANY KIND OF QUESTIONS OR QUERIES PLEASE CONTACT ME HERE: https://thingsbypatra.pythonanywhere.com/contact
 
 Also, this code needs some optimisations, so, if you have updated something and it works better than mine, then please let me know.
 
