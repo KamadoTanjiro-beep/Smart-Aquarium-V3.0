@@ -27,6 +27,9 @@ Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, an
 
 Please add http://arduino.esp8266.com/stable/package_esp8266com_index.json in File --> Preferences --> Additional Boards Manager URLs to get support for all ESP Boards.
 
+## Upcoming features or changes
+Chec [issues](https://github.com/KamadoTanjiro-beep/Smart-Aquarium-V3.0/issues)
+
 ## Pin Configuration:
 
 DS3231 and 128x64 OLED using I2C and are connected to
