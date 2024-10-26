@@ -2,6 +2,9 @@
 
 ## Disclaimer: I take absolutely no responsibility for any accidents that may happen due to the use of this code. Use it with your own risk. If you are a minor work under proper supervision. HIGH VOLTAGE electricity involved!! Proceed with extreme caution.
 
+## Upcoming features or changes
+Check [issues](https://github.com/KamadoTanjiro-beep/Smart-Aquarium-V3.0/issues)
+
 ### What's New?
 * Completely New WebServer UI
 * Uses new Asynchronous Webserver
@@ -26,9 +29,6 @@ Using NodeMCU for aquarium lights, filter, skimmer, power head/wavemaker control
 Rest of the libraries can be downloaded within Arduino IDE Libraries Manager, and some of them are already included (within Arduino). Please google for "how-to" if you cannot figure it.
 
 Please add http://arduino.esp8266.com/stable/package_esp8266com_index.json in File --> Preferences --> Additional Boards Manager URLs to get support for all ESP Boards.
-
-## Upcoming features or changes
-Check [issues](https://github.com/KamadoTanjiro-beep/Smart-Aquarium-V3.0/issues)
 
 ## Pin Configuration:
 
